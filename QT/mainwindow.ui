@@ -33,7 +33,7 @@
      <string>Reverse</string>
     </property>
    </widget>
-   <widget class="QCheckBox" name="checkBox">
+   <widget class="QCheckBox" name="LiveTelemtry">
     <property name="geometry">
      <rect>
       <x>420</x>
@@ -43,7 +43,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>CheckBox</string>
+     <string>LiveTelemtry</string>
     </property>
    </widget>
    <widget class="QStackedWidget" name="stackedWidget">

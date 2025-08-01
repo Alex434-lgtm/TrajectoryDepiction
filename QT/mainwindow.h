@@ -8,13 +8,13 @@
 #include <QTimer>
 #include <QtOpenGLWidgets/QOpenGLWidget>
 #include "Simulation.h"
-// Include Eigen if you still use the quaternion logic
 #include <QWheelEvent>
 #include <QtMath>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include "ui_mainwindow.h"
 #include <deque>
+#include "CCCPManager.h"
 
 class MainWindow : public QMainWindow
 {
@@ -26,6 +26,12 @@ protected:
     // Override keyPressEvent for WASD, Q/E, I/K, J/L
     void keyPressEvent(QKeyEvent *event) override;
 private slots:
+    // CCCP data handlers
+    void onAccelerometerData(const AccelerometerData& data);
+    void onAttitudeData(const AttitudeData& data);
+    void onTelemetryReceived(const QString& message);
+    void onConnectionStatusChanged(bool connected);
+    void onCCCPError(const QString& error);
     void updateRocketPosition();
     void on_pushButton_clicked();
     void on_pushButton_released();
@@ -34,6 +40,8 @@ private slots:
     void on_pushButton_3_clicked();
     void handlePageChange(int index);
     void on_comboBox_currentIndexChanged(int index);
+
+    void on_LiveTelemtry_checkStateChanged(const Qt::CheckState &arg1);
 
 private:
     // Simple custom OpenGL widget
@@ -107,9 +115,21 @@ private:
     };
 
     // Helper methods
+    void setupCCCP();  // New method
+    void updateRocketFromTelemetry();  // New method
     void setupStackedWidgetConnections();
     void initializeOpenGLWidgets();
+    // CCCP Communication
+    std::unique_ptr<CCCPManager> m_cccp;
 
+    // Real-time flight data
+    AccelerometerData m_currentAccel{0, 0, 0, 0};
+    AttitudeData m_currentAttitude{1, 0, 0, 0, 0};  // Initialize as identity quaternion
+    bool m_useLiveTelemetry = false;
+
+    // Status display
+    QLabel* m_connectionStatus;
+    QLabel* m_telemetryLabel;
     // Rocket simulation data
     double *x; // rocket X
     double *h; // rocket Z  (assuming 2D ground plane)
