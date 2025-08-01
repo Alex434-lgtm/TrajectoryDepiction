@@ -1,26 +1,44 @@
 ```markdown
-# Rocket Flight Path Imaging System
+# Rocket Flight Path Imaging System with Live Telemetry
 
-A real-time 3D visualization tool for simulating and displaying rocket flight trajectories with advanced physics modeling and interactive camera controls.
+A real-time 3D visualization tool for simulating and displaying rocket flight trajectories with advanced physics modeling, interactive camera controls, and live telemetry support via CCCP (Common Communication Protocol).
 
 ## Overview
 
-This flight imaging system provides a comprehensive visualization environment for rocket dynamics simulation. It features dual-viewport rendering, real-time trajectory tracking, and interactive camera controls to analyze rocket flight paths from multiple perspectives.
+This flight imaging system provides a comprehensive visualization environment for rocket dynamics, supporting both physics-based simulation and real-time telemetry data. It features dual-viewport rendering, real-time trajectory tracking, interactive camera controls, and live data streaming from rocket hardware via CCCP protocol.
 
 ## Features
 
 ### Core Functionality
-- **Real-time Rocket Dynamics Simulation**: Physics-based simulation using Runge-Kutta 4 (RK4) integration
+- **Dual Operation Modes**:
+  - **Simulation Mode**: Physics-based simulation using Runge-Kutta 4 (RK4) integration
+  - **Live Telemetry Mode**: Real-time data streaming via CCCP protocol
+- **Real-time Data Visualization**: Live accelerometer and attitude data processing
 - **Dual Viewport System**: Two synchronized 3D views for comprehensive trajectory analysis
 - **Interactive Camera Controls**: Free-roam and follow modes with smooth transitions
 - **Trajectory Visualization**: Color-coded flight path markers showing thrust and coast phases
 - **Orientation Tracking**: Quaternion-based rocket orientation display with visual triads
 - **Time Control**: Real-time playback with elapsed time display
 - **Trajectory Scrubbing**: Frame-by-frame navigation through recorded flight path
-  - Reverse playback mode with arrow key controls
-  - 20-frame stepping for quick navigation
+- **Connection Status Monitoring**: Real-time CCCP connection status display
 
-### Physics Simulation
+### Live Telemetry Features
+- **Real-time Accelerometer Data**: 
+  - 3-axis acceleration monitoring (X, Y, Z)
+  - Live velocity and position integration
+  - Visual acceleration indicators
+- **Real-time Attitude Data**:
+  - Quaternion-based orientation (w, x, y, z)
+  - Euler angles display (Roll, Pitch, Yaw)
+  - Live 3D orientation visualization
+- **Telemetry Display**:
+  - Current acceleration values in m/s²
+  - Attitude in degrees
+  - Quaternion components
+  - Connection status indicator
+- **Seamless Mode Switching**: Toggle between simulation and live telemetry
+
+### Physics Simulation (Simulation Mode)
 - **Launch Parameters**:
   - Initial mass: 50 kg
   - Thrust force: 7,000 N
@@ -39,15 +57,21 @@ This flight imaging system provides a comprehensive visualization environment fo
   - Blue: Powered flight (thrust phase)
   - Green: Coast phase
 - **Real-time position and orientation updates**
+- **Live telemetry status indicators**
 
 ## System Requirements
 
 ### Dependencies
-- Qt6 (Core, Widgets, OpenGL)
+- Qt6 (Core, Widgets, OpenGL, Network)
 - OpenGL
 - Eigen 3.4.0+ (Linear algebra library)
+- CCCP Library (Common Communication Protocol)
 - CMake 3.16+
 - C++17 compatible compiler
+
+### Network Requirements
+- UDP port access for CCCP communication
+- Network connectivity to rocket telemetry system
 
 ### Platform Support
 - Windows
@@ -57,8 +81,8 @@ This flight imaging system provides a comprehensive visualization environment fo
 ## Building the Project
 
 ```bash
-# Clone the repository
-git clone [repository-url]
+# Clone the repository with submodules (including CCCP)
+git clone --recursive [repository-url]
 cd rocket-flight-imaging
 
 # Create build directory
@@ -76,9 +100,10 @@ make -j4
 ```
 
 ### Windows-specific Build
-Ensure Eigen is properly configured in CMakeLists.txt:
+Ensure Eigen and CCCP are properly configured in CMakeLists.txt:
 ```cmake
 include_directories("C:/Toolbox/eigen-3.4.0")  # Adjust path as needed
+# CCCP paths should be configured similarly
 ```
 
 ## Controls
@@ -90,13 +115,19 @@ include_directories("C:/Toolbox/eigen-3.4.0")  # Adjust path as needed
 - **M/N**: Adjust movement speed (faster/slower)
 - **Right Mouse + Drag**: Free look
 
-### Playback Controls
-- **Checkbox**: Enable/disable reverse playback
-- **Arrow Keys**: Step through trajectory (when in reverse mode)
-- **ComboBox**: Switch between Free Camera and Follow Rocket modes
+### Operation Mode Controls
+- **Live Telemetry Checkbox**: Toggle between simulation and live telemetry mode
+  - Checked: Live telemetry mode (connects to CCCP)
+  - Unchecked: Simulation mode (physics-based)
+
+### Trajectory Playback Controls
+- **Reverse Playback Checkbox**: Enable/disable reverse playback mode
+- **Left Arrow**: Scrub backward through trajectory (20 frames/press)
+- **Right Arrow**: Scrub forward through trajectory (20 frames/press)
 
 ### View Controls
 - **Button 2/3**: Switch between primary and secondary viewports
+- **ComboBox**: Switch between Free Camera and Follow Rocket modes
 
 ## Architecture
 
@@ -106,6 +137,7 @@ include_directories("C:/Toolbox/eigen-3.4.0")  # Adjust path as needed
    - Manages the application UI and user interactions
    - Coordinates dual OpenGL widgets
    - Handles camera controls and view switching
+   - Manages CCCP integration and telemetry processing
 
 2. **RocketOpenGLWidget**
    - Custom OpenGL rendering widget
@@ -119,11 +151,24 @@ include_directories("C:/Toolbox/eigen-3.4.0")  # Adjust path as needed
    - Calculates thrust, drag, and gravitational forces
    - Returns flight path angle, velocity, and acceleration data
 
-4. **Data Flow**
+4. **CCCPManager**
+   - Manages CCCP communication protocol
+   - Handles network connectivity
+   - Processes incoming telemetry data
+   - Emits signals for data updates
+
+5. **Data Flow**
    ```
+   Simulation Mode:
    Simulation → Quaternion Orientations → OpenGL Widgets → Visual Output
                      ↓
                Trajectory Data → Marker Positions
+
+   Live Telemetry Mode:
+   CCCP Network → CCCPManager → Data Signals → MainWindow → OpenGL Widgets
+         ↓              ↓                           ↓
+   Accelerometer    Attitude               Position Integration
+       Data          Data                  & Visualization Update
    ```
 
 ## File Structure
@@ -136,7 +181,9 @@ rocket-flight-imaging/
 ├── mainwindow.h            # Main window header
 ├── mainwindow.ui           # Qt Designer UI file
 ├── Simulation.cpp          # Physics simulation
-└── Simulation.h            # Simulation header
+├── Simulation.h            # Simulation header
+├── CCCPManager.cpp         # CCCP communication manager
+├── CCCPManager.h           # CCCP manager header
 ```
 
 ## Technical Details
@@ -145,6 +192,17 @@ rocket-flight-imaging/
 - X-axis: Horizontal (East)
 - Y-axis: Horizontal (North)
 - Z-axis: Vertical (Up)
+
+### Telemetry Data Structure
+- **Accelerometer Data**: 3-axis acceleration in m/s²
+- **Attitude Data**: Quaternion (w, x, y, z) representing orientation
+- **Update Rate**: 100 Hz (10ms intervals)
+
+### CCCP Protocol Integration
+- Uses UDP for low-latency communication
+- Automatic reconnection handling
+- Error detection and reporting
+- Thread-safe data processing
 
 ### Rendering Pipeline
 1. Initialize OpenGL context with depth testing
@@ -155,11 +213,30 @@ rocket-flight-imaging/
    - Rocket model (sphere)
    - Orientation triads
    - Trajectory markers
+   - Telemetry status indicators
 
 ### Performance Considerations
 - Timer-based updates at 100 FPS (10ms intervals)
 - Efficient marker storage using std::vector
 - Optimized OpenGL immediate mode rendering
+- Separate thread for CCCP communication
+- Minimal latency telemetry processing
+
+## Network Configuration
+
+### CCCP Connection Settings
+Configure CCCP connection parameters in `config.h` or through UI:
+```cpp
+// Default CCCP settings
+const QString DEFAULT_HOST = "192.168.1.100";
+const int DEFAULT_PORT = 8080;
+const int TIMEOUT_MS = 5000;
+```
+
+### Firewall Configuration
+Ensure the following ports are open:
+- UDP port for CCCP communication (default: 8080)
+- Allow incoming connections from rocket telemetry system
 
 ## Customization
 
@@ -179,27 +256,48 @@ cameraY = 5000.0f;
 cameraZ = 0.0f;
 ```
 
+### Configuring Telemetry Display
+Customize telemetry labels in `setupCCCP()`:
+```cpp
+m_telemetryLabel->setStyleSheet("color: white; font-size: 14px;");
+m_connectionStatus->setStyleSheet("color: red; font-size: 16px;");
+```
+
 ### Changing Visual Elements
 - Grid size: Modify `drawXYPlane(5000.0f, 2000)` parameters
 - Marker size: Adjust `drawXMesh(2.0f)` parameter
 - Colors: Modify `glColor3f()` calls
+
+## Troubleshooting
+
+### Connection Issues
+- **"Failed to initialize CCCP communication"**: Check network settings and firewall
+- **"Disconnected" status**: Verify rocket telemetry system is transmitting
+- **No data received**: Ensure correct IP address and port configuration
+
 ## License
+
 This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+
 This software uses Qt Community Edition, which is licensed under the GNU General Public License v3.0. 
 As a result, this project must also be distributed under GPL v3.0 or later.
+
 ## Third-Party Licenses
-This software uses Qt Community Edition
-- License: GNU GPL v3.0 / GNU LGPL v3.0
-- Website: https://www.qt.io/
-- License details: https://www.qt.io/licensing/
+
+This software uses:
+- **Qt Community Edition**
+  - License: GNU GPL v3.0 / GNU LGPL v3.0
+  - Website: https://www.qt.io/
+  - License details: https://www.qt.io/licensing/
+- **Eigen**
+  - License: MPL2
+  - Website: https://eigen.tuxfamily.org/
 ## Acknowledgments
 Built with:
 - Qt Community Edition (https://www.qt.io/) - GUI Framework [GPL v3/LGPL v3]
 - Eigen (https://eigen.tuxfamily.org/) - Linear Algebra Library [MPL2]
 - OpenGL - 3D Graphics API
+- CCCP Protocol - (https://github.com/CTU-Space-Research/CCCP)
 ## Support
 
 For issues, questions, or suggestions, please [create an issue](link-to-issues) in the repository.
-```
-
-This README provides a comprehensive overview of the flight imaging system, including its features, build instructions, usage guidelines, and technical details. It's structured to help both users and developers understand and work with the system effectively.
